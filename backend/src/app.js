@@ -118,10 +118,10 @@ const start = async () => {
     app.log.error(err);
     process.exit(1);
   }
-  if (err.statusCode) {
-    req.log.warn(err);
-    return reply.status(err.statusCode).send({ error: err.message });
-  }
-  req.log.error(err);
-  reply.status(500).send({ error: 'Internal Server Error' });
-}; if (process.env.NODE_ENV !== 'test') { require('./utils/cron').setupCronJobs(); }  const start = async () => { try { await app.listen({ port: config.port, host: config.host }); console.log(`Server listening on port ${config.port}`); } catch (err) { app.log.error(err); process.exit(1); } }; if (require.main === module) { start(); } else { module.exports = app; }
+};
+
+if (require.main === module) {
+  start();
+} else {
+  module.exports = app;
+}
