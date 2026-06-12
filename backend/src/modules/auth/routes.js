@@ -50,9 +50,22 @@ const { email, password } = result.data;
   });
 
   // Logout
-  fastify.post('/logout', { schema: { tags: ['Authentication'], description: 'Logout and revoke refresh token' } }, async (req, reply) => {
-    const token = req.cookies.refreshToken || req.body.refreshToken;
-    if (token) await service.logout(token);
+  fastify.post('/logout', { 
+  preHandler: [auth],
+  schema: { tags: ['Authentication'], description: 'Logout and revoke refresh token' } }, async (req, reply) => {
+    const token =req.cookies.refreshToken ||req.body?.refreshToken;
+if (!token) {
+  return reply.status(400).send({
+    error: 'Refresh token required'
+  });
+}
+   await service.logout(
+      token,
+      req.user.id,
+      req.ip,
+      req.headers['user-agent']
+    );
+
     reply.clearCookie('refreshToken', { path: '/api/auth/refresh' });
     return { message: 'Logged out' };
   });
@@ -61,6 +74,25 @@ const { email, password } = result.data;
   fastify.get('/csrf-token', async (req, reply) => {
     const { generateToken } = require('../../middleware/csrf');
     return { csrfToken: generateToken() };
+  });
+
+  // Verify email
+  fastify.post('/verify-email', async (req, reply) => {
+    const schema = z.object({ token: z.string() });
+    const { token } = schema.parse(req.body);
+    const { verifyEmail } = require('./verificationService');
+    await verifyEmail(token);
+    return { message: 'Email verified successfully. You can now log in.' };
+  });
+
+  // Resend verification email
+  fastify.post('/resend-verification', { preHandler: [auth] }, async (req, reply) => {
+    const repo = require('./repository');
+    const user = await repo.findById(req.user.id);
+    if (!user) return reply.status(404).send({ error: 'User not found' });
+    const { sendVerificationEmail } = require('./verificationService');
+    await sendVerificationEmail(user.id, user.email);
+    return { message: 'Verification email sent.' };
   });
 
   // Forgot password
